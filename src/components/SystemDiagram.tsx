@@ -17,11 +17,10 @@ import { SystemModel } from '../models/SystemModel';
 import { StockNode } from './nodes/StockNode';
 import { FlowNode } from './nodes/FlowNode';
 import { CloudNode } from './nodes/CloudNode';
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useMemo } from 'react';
 import { getLayoutedElements, getSmartHierarchicalLayout } from '../utils/layoutEngine';
 import { elkLayoutEngine, type LayoutMode } from '../utils/elkLayoutEngine';
 import { MetricsPanel } from './MetricsPanel';
-import { DebugPanel } from './DebugPanel';
 import FlowEdge from './edges/FlowEdge';
 import DependencyEdge from './edges/DependencyEdge';
 import InfluenceEdge from './edges/InfluenceEdge';
@@ -298,7 +297,10 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const layoutType = 'grid';
   const [showMetrics, setShowMetrics] = useState(false);
-  const [showDebug, setShowDebug] = useState(false);
+
+  // Memoize node and edge types to prevent React Flow warnings
+  const memoizedNodeTypes = useMemo(() => nodeTypes, []);
+  const memoizedEdgeTypes = useMemo(() => edgeTypes, []);
 
   const generateLayout = useCallback(async () => {
     const newNodes: Node[] = [];
@@ -546,6 +548,8 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
     let layoutedEdges = newEdges;
 
     try {
+      // Clear cache to ensure updated spacing takes effect
+      elkLayoutEngine.clearCache();
       // Use ELK layout engine for all layout modes
       const elkResult = await elkLayoutEngine.applyLayout(newNodes, newEdges, layoutType);
       layoutedNodes = elkResult.nodes;
@@ -642,8 +646,8 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
       edges={edges}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
-      nodeTypes={nodeTypes}
-      edgeTypes={edgeTypes}
+      nodeTypes={memoizedNodeTypes}
+      edgeTypes={memoizedEdgeTypes}
       connectionMode={ConnectionMode.Loose}
       fitView
       attributionPosition="bottom-left"
@@ -662,12 +666,6 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
         onToggle={() => setShowMetrics(!showMetrics)}
       />
 
-      {/* Debug Panel */}
-      <DebugPanel
-        model={model}
-        isVisible={showDebug}
-        onToggle={() => setShowDebug(!showDebug)}
-      />
     </ReactFlow>
   );
 }

@@ -78,7 +78,7 @@ export function GraphSidebar({ model, data, isCollapsed, onToggleCollapse, width
           }}
           title={isCollapsed ? 'Show Graphs' : 'Hide Graphs'}
         >
-          {isCollapsed ? '📊' : '←'}
+          {isCollapsed ? '←' : '→'}
         </button>
 
         {!isCollapsed && (
@@ -96,7 +96,7 @@ export function GraphSidebar({ model, data, isCollapsed, onToggleCollapse, width
                 fontWeight: '600',
                 color: '#111827',
               }}>
-                Custom Graphs
+                Graphs
               </h3>
               <p style={{
                 margin: '4px 0 0 0',

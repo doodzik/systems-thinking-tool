@@ -88,7 +88,7 @@ graph Resources_Only {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>System Dynamics Modeler</h1>
+        <h1>Systems Thinking Tool</h1>
       </header>
 
       {/* Main content area with collapsible layout */}
@@ -110,13 +110,13 @@ graph Resources_Only {
         >
           {/* Left: DSL Editor with collapse functionality */}
           <div style={{
-            width: isEditorCollapsed ? '0px' : `${editorWidth}%`,
-            minWidth: isEditorCollapsed ? '0px' : '250px',
+            width: isEditorCollapsed ? '48px' : `${editorWidth}%`,
+            minWidth: isEditorCollapsed ? '48px' : '250px',
             position: 'relative',
             transition: isDragging === 'editor' ? 'none' : 'width 0.3s ease',
             overflow: 'hidden',
           }}>
-            {!isEditorCollapsed && (
+            {!isEditorCollapsed ? (
               <>
                 <button
                   onClick={() => setIsEditorCollapsed(true)}
@@ -146,6 +146,36 @@ graph Resources_Only {
                   }, [])}
                 />
               </>
+            ) : (
+              <div style={{
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                background: '#f9fafb',
+                borderRight: '1px solid #e5e7eb',
+              }}>
+                <button
+                  onClick={() => setIsEditorCollapsed(false)}
+                  style={{
+                    background: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    padding: '12px 8px',
+                    cursor: 'pointer',
+                    fontSize: '11px',
+                    fontWeight: '600',
+                    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+                    writingMode: 'vertical-lr',
+                    textOrientation: 'mixed',
+                    letterSpacing: '1px',
+                  }}
+                  title="Show Editor"
+                >
+                  ← Code
+                </button>
+              </div>
             )}
           </div>
 
@@ -181,40 +211,6 @@ graph Resources_Only {
             )}
           </div>
 
-          {/* Show Editor button when collapsed */}
-          {isEditorCollapsed && (
-            <div style={{
-              position: 'relative',
-              width: '48px',
-              flexShrink: 0,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              background: '#f9fafb',
-              borderRight: '1px solid #e5e7eb',
-            }}>
-              <button
-                onClick={() => setIsEditorCollapsed(false)}
-                style={{
-                  background: '#3b82f6',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '12px 8px',
-                  cursor: 'pointer',
-                  fontSize: '11px',
-                  fontWeight: '600',
-                  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-                  writingMode: 'vertical-lr',
-                  textOrientation: 'mixed',
-                  letterSpacing: '1px',
-                }}
-                title="Show Editor"
-              >
-                EDITOR
-              </button>
-            </div>
-          )}
 
           {/* Center: Diagram */}
           <div className="visualization-panel" style={{

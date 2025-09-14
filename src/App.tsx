@@ -92,7 +92,7 @@ graph Resources_Only {
   return (
     <div className="app">
       <header className="app-header">
-        <h1>System Dynamics Modeler</h1>
+        <h1>Systems Thinking Tool</h1>
       </header>
 
       {/* Main content area with collapsible layout */}
@@ -169,7 +169,7 @@ graph Resources_Only {
               }}
               title="Show Editor"
             >
-              Code ⚙️
+              ← Code
             </button>
           )}
 
@@ -179,6 +179,7 @@ graph Resources_Only {
             position: 'relative',
             display: isMainViewCollapsed ? 'none' : 'flex',
             flexDirection: 'column',
+            minWidth: 0, // Important for flex shrinking
           }}>
             <button
               onClick={() => setIsMainViewCollapsed(true)}

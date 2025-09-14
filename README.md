@@ -1,6 +1,6 @@
-# System Dynamics Modeler
+# Systems Thinking Tool
 
-A browser-based system dynamics modeling tool built with React, TypeScript, and React Flow.
+A browser-based systems thinking tool built with React, TypeScript, and React Flow.
 
 ## ✅ CORRECTED IMPLEMENTATION COMPLETE
 

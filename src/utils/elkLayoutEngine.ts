@@ -33,8 +33,8 @@ export const ELK_CONFIGURATIONS: Record<LayoutMode, ELKOptions> = {
   grid: {
     'elk.algorithm': 'layered',
     'elk.direction': 'RIGHT',
-    'elk.layered.spacing.edgeNodeBetweenLayers': '80',
-    'elk.spacing.nodeNode': '60',
+    'elk.layered.spacing.edgeNodeBetweenLayers': '120',
+    'elk.spacing.nodeNode': '120',
     'elk.layered.nodePlacement.strategy': 'SIMPLE',
     'elk.portConstraints': 'FIXED_ORDER',
     'elk.edgeRouting': 'SPLINES',
@@ -105,11 +105,22 @@ export class ELKLayoutEngine {
   }
 
   private convertNodesToELK(nodes: Node[]): any[] {
-    return nodes.map(node => ({
-      id: node.id,
-      width: node.width || 140,
-      height: node.height || 80
-    }));
+    return nodes.map(node => {
+      // Give flow nodes smaller dimensions for tighter spacing
+      if (node.type === 'flow') {
+        return {
+          id: node.id,
+          width: node.width || 60,
+          height: node.height || 60
+        };
+      }
+      // Stock and cloud nodes keep normal size
+      return {
+        id: node.id,
+        width: node.width || 140,
+        height: node.height || 80
+      };
+    });
   }
 
   private convertEdgesToELK(edges: Edge[]): any[] {
@@ -147,12 +158,39 @@ export class ELKLayoutEngine {
       const layoutedNodes = nodes.map(node => {
         const elkNode = layoutedGraph.children?.find(n => n.id === node.id);
         if (elkNode) {
+          let x = elkNode.x || 0;
+          let y = elkNode.y || 0;
+
+          // Special positioning for flow nodes that are self-loops
+          if (node.type === 'flow') {
+            // Find if this flow connects to the same stock (self-loop)
+            const flowEdges = edges.filter(e => e.source === node.id || e.target === node.id);
+            const connectedStocks = new Set();
+
+            flowEdges.forEach(edge => {
+              const sourceNode = nodes.find(n => n.id === edge.source);
+              const targetNode = nodes.find(n => n.id === edge.target);
+
+              if (sourceNode?.type === 'stock') connectedStocks.add(sourceNode.id);
+              if (targetNode?.type === 'stock') connectedStocks.add(targetNode.id);
+            });
+
+            // If connected to only one stock (self-loop), position closer to it
+            if (connectedStocks.size === 1) {
+              const stockId = Array.from(connectedStocks)[0];
+              const stockNode = layoutedGraph.children?.find(n => n.id === stockId);
+
+              if (stockNode) {
+                // Position flow node closer to and aligned with the stock
+                x = (stockNode.x || 0) - 140; // Offset a tiny bit more to the left
+                y = (stockNode.y || 0) + 10; // Position slightly below center
+              }
+            }
+          }
+
           return {
             ...node,
-            position: {
-              x: elkNode.x || 0,
-              y: elkNode.y || 0
-            }
+            position: { x, y }
           };
         }
         return node;

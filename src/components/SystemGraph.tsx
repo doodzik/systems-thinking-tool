@@ -107,7 +107,7 @@ export function SystemGraph({ model }: SystemGraphProps) {
         alignItems: 'center',
         marginBottom: '10px'
       }}>
-        <h3 style={{ margin: 0 }}>System Behavior</h3>
+        <h3 style={{ margin: 0 }}>Graphs</h3>
         <button
           onClick={() => setShowTable(!showTable)}
           style={{

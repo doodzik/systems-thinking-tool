@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import { SystemModel } from '../models/SystemModel';
 
 interface MetricsPanelProps {
@@ -128,6 +128,20 @@ function MetricCard({ title, value, change, units, trend }: {
 }
 
 export function MetricsPanel({ model, isVisible, onToggle }: MetricsPanelProps) {
+  const [updateTrigger, setUpdateTrigger] = useState(0);
+
+  // Listen for model updates to ensure real-time updates during simulation
+  useEffect(() => {
+    const handleModelUpdate = () => {
+      setUpdateTrigger(prev => prev + 1);
+    };
+
+    window.addEventListener('modelUpdate', handleModelUpdate);
+    return () => {
+      window.removeEventListener('modelUpdate', handleModelUpdate);
+    };
+  }, []);
+
   const metrics = useMemo(() => {
     const stockMetrics: Array<{
       title: string;
@@ -170,6 +184,30 @@ export function MetricsPanel({ model, isVisible, onToggle }: MetricsPanelProps) 
       });
     });
 
+    // Calculate metrics for each flow
+    const flowMetrics: Array<{
+      title: string;
+      value: number;
+      change: number;
+      units?: string;
+      trend: number[];
+    }> = [];
+
+    model.flows.forEach((flow, name) => {
+      const currentRate = flow.getRate(model);
+
+      // Create a simple history of flow rates (since flows don't store their own history)
+      const flowHistory = model.history.map(() => currentRate);
+
+      flowMetrics.push({
+        title: `${name} (Rate)`,
+        value: currentRate,
+        change: 0, // Flow rates don't have historical change tracking yet
+        units: 'per step',
+        trend: flowHistory.slice(-10),
+      });
+    });
+
     // Add system-level metrics
     const totalSystemValue = Array.from(model.stocks.values()).reduce(
       (sum, stock) => sum + (stock.value || 0), 0
@@ -177,10 +215,11 @@ export function MetricsPanel({ model, isVisible, onToggle }: MetricsPanelProps) 
 
     return {
       stocks: stockMetrics,
+      flows: flowMetrics,
       systemTotal: totalSystemValue,
       timeStep: model.time,
     };
-  }, [model]);
+  }, [model, updateTrigger]);
 
   if (!isVisible) {
     return (
@@ -302,6 +341,26 @@ export function MetricsPanel({ model, isVisible, onToggle }: MetricsPanelProps) 
           />
         ))}
       </div>
+
+      {/* Flow metrics */}
+      {metrics.flows.length > 0 && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '6px',
+        }}>
+          {metrics.flows.map((flow) => (
+            <MetricCard
+              key={flow.title}
+              title={flow.title}
+              value={flow.value}
+              change={flow.change}
+              units={flow.units}
+              trend={flow.trend}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

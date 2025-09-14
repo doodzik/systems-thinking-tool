@@ -53,7 +53,7 @@ export function SimulationControls({
   };
 
   // Fast simulation - run many steps quickly but capture intermediate states
-  const runFast = (steps: number = 10000) => {
+  const runFast = (steps: number = 100000) => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
@@ -141,6 +141,22 @@ export function SimulationControls({
       </button>
 
       <button
+        onClick={() => runFast()}
+        disabled={isRunning}
+        style={{
+          padding: '8px 20px',
+          background: isRunning ? '#7f8c8d' : '#9b59b6',
+          color: 'white',
+          border: 'none',
+          borderRadius: '4px',
+          cursor: isRunning ? 'not-allowed' : 'pointer',
+          fontSize: '14px',
+        }}
+      >
+        ⚡ Fast Run
+      </button>
+
+      <button
         onClick={reset}
         style={{
           padding: '8px 20px',
@@ -153,22 +169,6 @@ export function SimulationControls({
         }}
       >
         Reset
-      </button>
-
-      <button
-        onClick={() => runFast(10000)}
-        disabled={isRunning}
-        style={{
-          padding: '8px 20px',
-          background: isRunning ? '#7f8c8d' : '#9b59b6',
-          color: 'white',
-          border: 'none',
-          borderRadius: '4px',
-          cursor: isRunning ? 'not-allowed' : 'pointer',
-          fontSize: '14px',
-        }}
-      >
-        ⚡ Fast (10k)
       </button>
 
       <div style={{ marginLeft: '20px', display: 'flex', alignItems: 'center' }}>
