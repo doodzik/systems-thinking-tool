@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Page Load Test</title>
+</head>
+<body>
+    <script>
+        console.log('Testing page load...');
+
+        // Try to fetch and log any errors
+        fetch('http://localhost:5173')
+            .then(response => response.text())
+            .then(html => {
+                console.log('Page loaded successfully, length:', html.length);
+
+                // Create a temporary iframe to test the page
+                const iframe = document.createElement('iframe');
+                iframe.style.display = 'none';
+                iframe.src = 'http://localhost:5173';
+
+                iframe.onload = () => {
+                    console.log('Page loaded in iframe successfully');
+                    try {
+                        const iframeDoc = iframe.contentDocument;
+                        const root = iframeDoc.getElementById('root');
+                        console.log('Root element found:', !!root);
+                        console.log('Root content length:', root ? root.innerHTML.length : 'not found');
+
+                        // Check for any error messages in the page
+                        const errorElements = iframeDoc.querySelectorAll('[class*="error"], [id*="error"]');
+                        console.log('Error elements found:', errorElements.length);
+
+                        setTimeout(() => {
+                            console.log('Final root content:', root ? root.innerHTML.substring(0, 200) + '...' : 'empty');
+                        }, 1000);
+
+                    } catch(e) {
+                        console.error('Error accessing iframe content:', e);
+                    }
+                };
+
+                iframe.onerror = (e) => {
+                    console.error('Iframe load error:', e);
+                };
+
+                document.body.appendChild(iframe);
+            })
+            .catch(error => {
+                console.error('Failed to fetch page:', error);
+            });
+    </script>
+</body>
+</html>
