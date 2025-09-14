@@ -1,5 +1,5 @@
-import { Handle, Position } from 'reactflow';
 import { useMemo } from 'react';
+import { Handle, Position } from 'reactflow';
 
 interface FlowNodeProps {
   data: {
@@ -140,80 +140,18 @@ export function FlowNode({ data }: FlowNodeProps) {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       transition: 'all 0.2s ease',
     }}>
-      <Handle
-        id="left"
-        type="target"
-        position={Position.Left}
-        style={{
-          left: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="left-source"
-        type="source"
-        position={Position.Left}
-        style={{
-          left: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
+      {/* East/West handles only */}
+      <Handle id="source-in-1" type="target" position={Position.Left} style={{ top: '25%', background: '#6366f1', width: '6px', height: '6px' }} />
+      <Handle id="source-in-2" type="target" position={Position.Left} style={{ top: '45%', background: '#6366f1', width: '6px', height: '6px' }} />
+      <Handle id="source-in-3" type="target" position={Position.Left} style={{ top: '65%', background: '#6366f1', width: '6px', height: '6px' }} />
 
-      <Handle
-        id="top"
-        type="target"
-        position={Position.Top}
-        style={{
-          top: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="top-source"
-        type="source"
-        position={Position.Top}
-        style={{
-          top: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
+      <Handle id="target-out-1" type="source" position={Position.Right} style={{ top: '25%', background: '#6366f1', width: '6px', height: '6px' }} />
+      <Handle id="target-out-2" type="source" position={Position.Right} style={{ top: '45%', background: '#6366f1', width: '6px', height: '6px' }} />
+      <Handle id="target-out-3" type="source" position={Position.Right} style={{ top: '65%', background: '#6366f1', width: '6px', height: '6px' }} />
 
-      <Handle
-        id="bottom"
-        type="source"
-        position={Position.Bottom}
-        style={{
-          bottom: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="bottom-target"
-        type="target"
-        position={Position.Bottom}
-        style={{
-          bottom: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
+      <Handle id="rate-control-1" type="target" position={Position.Left} style={{ top: '35%', background: '#f59e0b', width: '4px', height: '4px' }} />
+      <Handle id="rate-control-2" type="target" position={Position.Left} style={{ top: '55%', background: '#f59e0b', width: '4px', height: '4px' }} />
+      <Handle id="rate-control-3" type="target" position={Position.Left} style={{ top: '75%', background: '#f59e0b', width: '4px', height: '4px' }} />
 
       {/* Flow name */}
       <div style={{
@@ -262,30 +200,6 @@ export function FlowNode({ data }: FlowNodeProps) {
         )}
       </div>
 
-      <Handle
-        id="right"
-        type="source"
-        position={Position.Right}
-        style={{
-          right: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="right-target"
-        type="target"
-        position={Position.Right}
-        style={{
-          right: -8,
-          background: flowColor,
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
     </div>
   );
 }

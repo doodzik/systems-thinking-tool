@@ -19,9 +19,12 @@ import { FlowNode } from './nodes/FlowNode';
 import { CloudNode } from './nodes/CloudNode';
 import { useEffect, useCallback, useState } from 'react';
 import { getLayoutedElements, getSmartHierarchicalLayout } from '../utils/layoutEngine';
+import { elkLayoutEngine, type LayoutMode } from '../utils/elkLayoutEngine';
 import { MetricsPanel } from './MetricsPanel';
 import { DebugPanel } from './DebugPanel';
-import FloatingEdge from './edges/FloatingEdge';
+import FlowEdge from './edges/FlowEdge';
+import DependencyEdge from './edges/DependencyEdge';
+import InfluenceEdge from './edges/InfluenceEdge';
 
 const nodeTypes = {
   stock: StockNode,
@@ -30,7 +33,9 @@ const nodeTypes = {
 };
 
 const edgeTypes = {
-  floating: FloatingEdge,
+  flow: FlowEdge,
+  dependency: DependencyEdge,
+  influence: InfluenceEdge,
 };
 
 
@@ -291,13 +296,81 @@ const autoLayoutForceDirected = (nodes: Node[], edges: Edge[]): Node[] => {
 export function SystemDiagram({ model }: SystemDiagramProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [layoutType, setLayoutType] = useState<'hierarchical' | 'grid' | 'force'>('hierarchical');
+  const layoutType = 'grid';
   const [showMetrics, setShowMetrics] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
 
-  const generateLayout = useCallback(() => {
+  const generateLayout = useCallback(async () => {
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
+
+    // Handle assignment tracking
+    const handleCounters = new Map<string, {
+      sourceIn: number;
+      targetOut: number;
+      rateControl: number;
+      info: number;
+      in: number;
+      out: number;
+    }>();
+
+    const getNextHandle = (nodeId: string, handleType: keyof ReturnType<typeof handleCounters.get>) => {
+      if (!handleCounters.has(nodeId)) {
+        handleCounters.set(nodeId, {
+          sourceIn: 0,
+          targetOut: 0,
+          rateControl: 0,
+          info: 0,
+          in: 0,
+          out: 0,
+        });
+      }
+      const counters = handleCounters.get(nodeId)!;
+      const currentCount = counters[handleType];
+      counters[handleType]++;
+
+      // Generate handle ID based on type and count
+      if (handleType === 'sourceIn') return `source-in-${currentCount + 1}`;
+      if (handleType === 'targetOut') return `target-out-${currentCount + 1}`;
+      if (handleType === 'rateControl') return `rate-control-${currentCount + 1}`;
+      if (handleType === 'info') return `info-${currentCount + 1}`;
+      if (handleType === 'in') return `in-${currentCount + 1}`;
+      if (handleType === 'out') return `out-${currentCount + 1}`;
+      return `handle-${currentCount + 1}`;
+    };
+
+    // Enhanced loop detection with direction awareness
+    const getLoopType = (sourceId: string, targetId: string, edges: any[], newNodes: any[]) => {
+      // Check if nodes are the same (self-loop)
+      if (sourceId === targetId) {
+        return 'self-loop';
+      }
+
+      // Check if reverse edge already exists (A -> B when B -> A exists)
+      const reverseEdgeExists = edges.some(edge =>
+        edge.source === targetId && edge.target === sourceId
+      );
+
+      if (reverseEdgeExists) {
+        // Determine which direction is west-to-east vs east-to-west
+        const sourceNode = newNodes.find(n => n.id === sourceId);
+        const targetNode = newNodes.find(n => n.id === targetId);
+
+        if (sourceNode && targetNode) {
+          // If source is to the right of target, this is east-to-west (reverse)
+          if (sourceNode.position.x > targetNode.position.x) {
+            return 'reverse-loop';
+          } else {
+            // This is west-to-east (forward), keep normal
+            return 'forward-loop';
+          }
+        }
+
+        return 'bidirectional-loop';
+      }
+
+      return 'normal';
+    };
 
     // Create nodes for stocks with history data
     model.stocks.forEach((stock, name) => {
@@ -363,24 +436,30 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
           draggable: true,
         });
 
-        // Connect source cloud to flow (physical connection)
+        // Connect source cloud to flow (physical flow connection)
         newEdges.push({
           id: `${cloudId}-${valveId}`,
           source: cloudId,
+          sourceHandle: 'source-out',
           target: valveId,
-          type: 'floating',
+          targetHandle: getNextHandle(valveId, 'sourceIn'),
+          type: 'flow',
           animated: true,
-          style: { stroke: '#34495e', strokeWidth: 3 },
+          markerEnd: { type: 'arrowclosed', color: '#2563eb' },
+          data: { loopType: getLoopType(cloudId, valveId, newEdges, newNodes) },
         });
       } else {
-        // Connect from stock to flow (physical connection)
+        // Connect from stock to flow (physical flow connection)
         newEdges.push({
           id: `stock-${flow.from.name}-${valveId}`,
           source: `stock-${flow.from.name}`,
+          sourceHandle: getNextHandle(`stock-${flow.from.name}`, 'out'),
           target: valveId,
-          type: 'floating',
+          targetHandle: getNextHandle(valveId, 'sourceIn'),
+          type: 'flow',
           animated: true,
-          style: { stroke: '#34495e', strokeWidth: 3 },
+          markerEnd: { type: 'arrowclosed', color: '#2563eb' },
+          data: { loopType: getLoopType(`stock-${flow.from.name}`, valveId, newEdges, newNodes) },
         });
       }
 
@@ -396,32 +475,30 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
           draggable: true,
         });
 
-        // Connect flow to sink cloud (physical connection)
+        // Connect flow to sink cloud (physical flow connection)
         newEdges.push({
           id: `${valveId}-${sinkId}`,
           source: valveId,
+          sourceHandle: getNextHandle(valveId, 'targetOut'),
           target: sinkId,
-          type: 'floating',
+          targetHandle: 'sink-in',
+          type: 'flow',
           animated: true,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#34495e',
-          },
-          style: { stroke: '#34495e', strokeWidth: 3 },
+          markerEnd: { type: 'arrowclosed', color: '#2563eb' },
+          data: { loopType: getLoopType(valveId, sinkId, newEdges, newNodes) },
         });
       } else {
-        // Connect flow to target stock (physical connection)
+        // Connect flow to target stock (physical flow connection)
         newEdges.push({
           id: `${valveId}-stock-${flow.to.name}`,
           source: valveId,
+          sourceHandle: getNextHandle(valveId, 'targetOut'),
           target: `stock-${flow.to.name}`,
-          type: 'floating',
+          targetHandle: getNextHandle(`stock-${flow.to.name}`, 'in'),
+          type: 'flow',
           animated: true,
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: '#34495e',
-          },
-          style: { stroke: '#34495e', strokeWidth: 3 },
+          markerEnd: { type: 'arrowclosed', color: '#2563eb' },
+          data: { loopType: getLoopType(valveId, `stock-${flow.to.name}`, newEdges, newNodes) },
         });
       }
 
@@ -435,25 +512,17 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
           // Check if this stock name appears in the expression and isn't the source/target stock
           const stockRegex = new RegExp('\\b' + stockName + '\\b');
           if (stockRegex.test(rateExpr) && stockName !== flow.from?.name && stockName !== flow.to?.name) {
-            // Add floating information link from stock to flow
+            // Add dependency information link from stock to flow
             newEdges.push({
               id: `info-${stockName}-${valveId}`,
               source: `stock-${stockName}`,
+              sourceHandle: getNextHandle(`stock-${stockName}`, 'info'),
               target: valveId,
-              type: 'floating',
+              targetHandle: getNextHandle(valveId, 'rateControl'),
+              type: 'dependency',
               animated: true,
-              style: {
-                stroke: '#9ca3af',
-                strokeWidth: 1,
-                strokeDasharray: '3,3',
-                opacity: 0.7,
-              },
-              markerEnd: {
-                type: MarkerType.ArrowClosed,
-                color: '#9ca3af',
-                width: 12,
-                height: 12,
-              },
+              markerEnd: { type: 'arrowclosed', color: '#6b7280' },
+              data: { loopType: getLoopType(`stock-${stockName}`, valveId, newEdges, newNodes) },
               label: 'influences',
               labelStyle: {
                 fontSize: '9px',
@@ -472,32 +541,39 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
       }
     });
 
-    // Apply new smart layout algorithms
+    // Apply ELK layout algorithms
     let layoutedNodes = newNodes;
     let layoutedEdges = newEdges;
 
-    switch (layoutType) {
-      case 'grid':
-        // Use improved grid layout
-        layoutedNodes = autoLayoutGrid(newNodes);
-        break;
-      case 'force':
-        // Use dagre for force-directed style
-        const forceResult = getLayoutedElements(newNodes, newEdges, {
-          direction: 'TB',
-          nodeSpacing: 200,
-          rankSpacing: 150,
-        });
-        layoutedNodes = forceResult.nodes;
-        layoutedEdges = forceResult.edges;
-        break;
-      case 'hierarchical':
-      default:
-        // Use smart hierarchical layout
-        const hierarchicalResult = getSmartHierarchicalLayout(newNodes, newEdges);
-        layoutedNodes = hierarchicalResult.nodes;
-        layoutedEdges = hierarchicalResult.edges;
-        break;
+    try {
+      // Use ELK layout engine for all layout modes
+      const elkResult = await elkLayoutEngine.applyLayout(newNodes, newEdges, layoutType);
+      layoutedNodes = elkResult.nodes;
+      layoutedEdges = elkResult.edges;
+    } catch (error) {
+      console.error('ELK layout failed, falling back to default:', error);
+
+      // Fallback to simple layouts if ELK fails
+      switch (layoutType) {
+        case 'grid':
+          layoutedNodes = autoLayoutGrid(newNodes);
+          break;
+        case 'force-directed':
+          const forceResult = getLayoutedElements(newNodes, newEdges, {
+            direction: 'TB',
+            nodeSpacing: 200,
+            rankSpacing: 150,
+          });
+          layoutedNodes = forceResult.nodes;
+          layoutedEdges = forceResult.edges;
+          break;
+        case 'hierarchical':
+        default:
+          const hierarchicalResult = getSmartHierarchicalLayout(newNodes, newEdges);
+          layoutedNodes = hierarchicalResult.nodes;
+          layoutedEdges = hierarchicalResult.edges;
+          break;
+      }
     }
 
     setNodes(layoutedNodes);
@@ -559,10 +635,6 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
   }, [model, setNodes]);
 
 
-  // Apply layout function
-  const applyLayout = useCallback((type: 'hierarchical' | 'grid' | 'force') => {
-    setLayoutType(type);
-  }, []);
 
   return (
     <ReactFlow
@@ -582,67 +654,6 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
       <Background gap={16} size={1} />
       <Controls />
 
-      {/* Layout controls test */}
-      <Panel position="top-left">
-        <div style={{
-          background: 'white',
-          padding: '10px',
-          borderRadius: '8px',
-          boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-          display: 'flex',
-          gap: '5px',
-          flexDirection: 'column',
-        }}>
-          <div style={{ fontSize: '12px', fontWeight: 'bold', marginBottom: '5px' }}>
-            Layout
-          </div>
-
-          <button
-            onClick={() => applyLayout('hierarchical')}
-            style={{
-              padding: '4px 8px',
-              fontSize: '11px',
-              background: layoutType === 'hierarchical' ? '#3182bd' : '#f0f0f0',
-              color: layoutType === 'hierarchical' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Hierarchical
-          </button>
-
-          <button
-            onClick={() => applyLayout('grid')}
-            style={{
-              padding: '4px 8px',
-              fontSize: '11px',
-              background: layoutType === 'grid' ? '#3182bd' : '#f0f0f0',
-              color: layoutType === 'grid' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Grid
-          </button>
-
-          <button
-            onClick={() => applyLayout('force')}
-            style={{
-              padding: '4px 8px',
-              fontSize: '11px',
-              background: layoutType === 'force' ? '#3182bd' : '#f0f0f0',
-              color: layoutType === 'force' ? 'white' : 'black',
-              border: 'none',
-              borderRadius: '4px',
-              cursor: 'pointer',
-            }}
-          >
-            Force-Directed
-          </button>
-        </div>
-      </Panel>
 
       {/* Metrics Panel */}
       <MetricsPanel

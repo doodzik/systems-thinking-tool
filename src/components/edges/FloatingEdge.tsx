@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import { useStore, getSmoothStepPath, type EdgeProps, type Node } from 'reactflow';
+import { useStore, getSmoothStepPath, Position, type EdgeProps, type Node } from 'reactflow';
 
 import { getEdgeParams } from './utils';
 
@@ -23,13 +23,31 @@ function FloatingEdge({ id, source, target, markerEnd, style }: EdgeProps) {
   });
 
   return (
-    <path
-      id={id}
-      className="react-flow__edge-path"
-      d={edgePath}
-      markerEnd={markerEnd}
-      style={style}
-    />
+    <g>
+      <path
+        id={id}
+        className="react-flow__edge-path"
+        d={edgePath}
+        markerEnd={markerEnd}
+        style={style}
+      />
+      {/* Source connection dot */}
+      <circle
+        cx={sx}
+        cy={sy}
+        r={3}
+        fill={style?.stroke || '#b1b1b7'}
+        className="react-flow__edge-connection-dot"
+      />
+      {/* Target connection dot */}
+      <circle
+        cx={tx}
+        cy={ty}
+        r={3}
+        fill={style?.stroke || '#b1b1b7'}
+        className="react-flow__edge-connection-dot"
+      />
+    </g>
   );
 }
 

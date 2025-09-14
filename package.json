@@ -13,6 +13,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@types/dagre": "^0.7.53",
     "dagre": "^0.8.5",
+    "elkjs": "^0.10.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
     "react-split-pane-v2": "^1.0.3",

@@ -1,3 +1,4 @@
+
 import { Handle, Position } from 'reactflow';
 
 export function CloudNode({ data }: any) {
@@ -24,109 +25,11 @@ export function CloudNode({ data }: any) {
       boxShadow: '0 2px 8px rgba(0, 0, 0, 0.1)',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
-      {/* All sides for auto-alignment */}
+      {/* Cloud connection handles */}
       {isSource ? (
-        <>
-          <Handle
-            id="top"
-            type="source"
-            position={Position.Top}
-            style={{
-              top: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-          <Handle
-            id="right"
-            type="source"
-            position={Position.Right}
-            style={{
-              right: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-          <Handle
-            id="bottom"
-            type="source"
-            position={Position.Bottom}
-            style={{
-              bottom: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-          <Handle
-            id="left"
-            type="source"
-            position={Position.Left}
-            style={{
-              left: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-        </>
+        <Handle id="source-out" type="source" position={Position.Right} style={{ top: '50%', background: cloudColor, width: '8px', height: '8px' }} />
       ) : (
-        <>
-          <Handle
-            id="top"
-            type="target"
-            position={Position.Top}
-            style={{
-              top: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-          <Handle
-            id="right"
-            type="target"
-            position={Position.Right}
-            style={{
-              right: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-          <Handle
-            id="bottom"
-            type="target"
-            position={Position.Bottom}
-            style={{
-              bottom: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-          <Handle
-            id="left"
-            type="target"
-            position={Position.Left}
-            style={{
-              left: -8,
-              background: cloudColor,
-              border: '2px solid white',
-              width: '12px',
-              height: '12px',
-            }}
-          />
-        </>
+        <Handle id="sink-in" type="target" position={Position.Left} style={{ top: '50%', background: cloudColor, width: '8px', height: '8px' }} />
       )}
 
       <div style={{ textAlign: 'center' }}>

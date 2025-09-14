@@ -1,5 +1,5 @@
-import { Handle, Position } from 'reactflow';
 import { useMemo } from 'react';
+import { Handle, Position } from 'reactflow';
 
 interface StockNodeProps {
   data: {
@@ -142,74 +142,25 @@ export function StockNode({ data }: StockNodeProps) {
       position: 'relative',
       fontFamily: 'system-ui, -apple-system, sans-serif',
     }}>
-      <Handle
-        id="left"
-        type="target"
-        position={Position.Left}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="left-source"
-        type="source"
-        position={Position.Left}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
+      {/* East/West handles only */}
+      <Handle id="in-1" type="target" position={Position.Left} style={{ top: '15%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="in-2" type="target" position={Position.Left} style={{ top: '30%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="in-3" type="target" position={Position.Left} style={{ top: '45%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="in-4" type="target" position={Position.Left} style={{ top: '60%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="in-5" type="target" position={Position.Left} style={{ top: '75%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="in-6" type="target" position={Position.Left} style={{ top: '85%', background: '#3b82f6', width: '6px', height: '6px' }} />
 
-      <Handle
-        id="top"
-        type="target"
-        position={Position.Top}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="top-source"
-        type="source"
-        position={Position.Top}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
+      <Handle id="out-1" type="source" position={Position.Right} style={{ top: '15%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="out-2" type="source" position={Position.Right} style={{ top: '30%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="out-3" type="source" position={Position.Right} style={{ top: '45%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="out-4" type="source" position={Position.Right} style={{ top: '60%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="out-5" type="source" position={Position.Right} style={{ top: '75%', background: '#3b82f6', width: '6px', height: '6px' }} />
+      <Handle id="out-6" type="source" position={Position.Right} style={{ top: '85%', background: '#3b82f6', width: '6px', height: '6px' }} />
 
-      <Handle
-        id="bottom"
-        type="source"
-        position={Position.Bottom}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="bottom-target"
-        type="target"
-        position={Position.Bottom}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
+      <Handle id="info-1" type="source" position={Position.Right} style={{ top: '25%', background: '#6b7280', width: '4px', height: '4px' }} />
+      <Handle id="info-2" type="source" position={Position.Right} style={{ top: '35%', background: '#6b7280', width: '4px', height: '4px' }} />
+      <Handle id="info-3" type="source" position={Position.Right} style={{ top: '65%', background: '#6b7280', width: '4px', height: '4px' }} />
+      <Handle id="info-4" type="source" position={Position.Right} style={{ top: '55%', background: '#6b7280', width: '4px', height: '4px' }} />
 
       {/* Header with name and change indicator */}
       <div style={{
@@ -286,28 +237,6 @@ export function StockNode({ data }: StockNodeProps) {
         <Sparkline data={trendValues} />
       </div>
 
-      <Handle
-        id="right"
-        type="source"
-        position={Position.Right}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
-      <Handle
-        id="right-target"
-        type="target"
-        position={Position.Right}
-        style={{
-          background: '#3b82f6',
-          border: '2px solid white',
-          width: '12px',
-          height: '12px',
-        }}
-      />
     </div>
   );
 }
