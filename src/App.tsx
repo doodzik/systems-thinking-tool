@@ -1,24 +1,30 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 // import SplitPane from 'react-split-pane-v2';
 import { DSLEditor } from './components/DSLEditor';
 import { SystemDiagram } from './components/SystemDiagram';
 import { SimulationControls } from './components/SimulationControls';
 import { SystemGraph } from './components/SystemGraph';
-// import { GraphSidebar } from './components/GraphSidebar';
+import { GraphSidebar } from './components/GraphSidebar';
+import { EmbedGenerator } from './components/EmbedGenerator';
 import { SystemModel } from './models/SystemModel';
 import './App.css';
 
 function App() {
+  const [searchParams] = useSearchParams();
   const [model, setModel] = useState<SystemModel>(new SystemModel());
   const [isRunning, setIsRunning] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [modelVersion, setModelVersion] = useState(0);
+  const [dataUpdateTrigger, setDataUpdateTrigger] = useState(0);
   const [isEditorCollapsed, setIsEditorCollapsed] = useState(false);
-  const [isMainViewCollapsed, setIsMainViewCollapsed] = useState(false);
   const [isGraphSidebarCollapsed, setIsGraphSidebarCollapsed] = useState(false);
+  const [editorWidth, setEditorWidth] = useState(35); // percentage
+  const [sidebarWidth, setSidebarWidth] = useState(350); // pixels
+  const [isDragging, setIsDragging] = useState<'editor' | 'sidebar' | null>(null);
 
   // Default DSL code
-  const [dslCode, setDslCode] = useState(`// Population Growth with Resource Constraints
+  const defaultDslCode = `// Population Growth with Resource Constraints
 stock Population {
   initial: 100
   min: 0
@@ -32,7 +38,7 @@ stock Resources {
 }
 
 flow Births {
-  from: source
+  from: Population
   to: Population
   rate: Population * 0.02
 }
@@ -50,7 +56,7 @@ flow Consumption {
 }
 
 terminate {
-  when: Population <= 5 || Resources <= 0
+  when: Population <= 5 || Resources <= 0 || $step >= 100
 }
 
 graph Population_vs_Resources {
@@ -60,13 +66,6 @@ graph Population_vs_Resources {
   yAxisLabel: "Count"
 }
 
-graph Population_Only {
-  title: "Population Growth"
-  variables: Population
-  type: area
-  yAxisLabel: "People"
-  color: "#10b981"
-}
 
 graph Resources_Only {
   title: "Resource Depletion"
@@ -74,119 +73,82 @@ graph Resources_Only {
   type: line
   yAxisLabel: "Units"
   color: "#ef4444"
-}`);
+}`;
+
+  const [dslCode, setDslCode] = useState(defaultDslCode);
+
+  // Load DSL from URL parameter on mount
+  useEffect(() => {
+    const encoded = searchParams.get('dsl');
+    if (encoded) {
+      try {
+        const decoded = atob(encoded);
+        setDslCode(decoded);
+      } catch (error) {
+        console.error('Failed to decode DSL from URL:', error);
+      }
+    }
+  }, [searchParams]);
 
   // Prepare graph data from model history
-  // const graphData = useMemo(() => {
-  //   if (model.history.length === 0) return [];
+  const graphData = useMemo(() => {
+    if (model.history.length === 0) return [];
 
-  //   return model.history.map(point => {
-  //     const dataPoint: any = { time: point.time.toFixed(1) };
-  //     point.state.forEach((value, stockName) => {
-  //       dataPoint[stockName] = Number(value.toFixed(2));
-  //     });
-  //     return dataPoint;
-  //   });
-  // }, [model.history]);
+    return model.history.map(point => {
+      const dataPoint: any = { time: point.time.toFixed(1) };
+      point.state.forEach((value, stockName) => {
+        dataPoint[stockName] = Number(value.toFixed(2));
+      });
+      return dataPoint;
+    });
+  }, [model.history, dataUpdateTrigger]);
 
   return (
     <div className="app">
-      <header className="app-header">
+      <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Systems Thinking Tool</h1>
+        <EmbedGenerator dslCode={dslCode} />
       </header>
 
       {/* Main content area with collapsible layout */}
       <div className="main-content">
-        <div style={{ display: 'flex', height: '100%' }}>
+        <div
+          style={{ display: 'flex', height: '100%' }}
+          onMouseMove={(e) => {
+            if (isDragging === 'editor') {
+              const containerWidth = e.currentTarget.getBoundingClientRect().width;
+              const newWidth = Math.max(20, Math.min(60, (e.clientX / containerWidth) * 100));
+              setEditorWidth(newWidth);
+            } else if (isDragging === 'sidebar') {
+              const containerRect = e.currentTarget.getBoundingClientRect();
+              const newWidth = Math.max(250, Math.min(600, containerRect.right - e.clientX));
+              setSidebarWidth(newWidth);
+            }
+          }}
+          onMouseUp={() => setIsDragging(null)}
+        >
           {/* Left: DSL Editor with collapse functionality */}
-          {!isEditorCollapsed && (
-            <>
-              <div className="editor-panel" style={{
-                width: '35%',
-                minWidth: '300px',
-                position: 'relative',
-              }}>
-                <button
-                  onClick={() => setIsEditorCollapsed(true)}
-                  style={{
-                    position: 'absolute',
-                    top: '12px',
-                    right: '12px',
-                    zIndex: 10,
-                    background: 'rgba(0, 0, 0, 0.7)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    padding: '4px 8px',
-                    cursor: 'pointer',
-                    fontSize: '12px',
-                  }}
-                  title="Hide Editor"
-                >
-                  ←
-                </button>
-                <DSLEditor
-                  code={dslCode}
-                  onChange={setDslCode}
-                  onModelUpdate={useCallback((newModel) => {
-                    setModel(newModel);
-                    setModelVersion(prev => prev + 1);
-                  }, [])}
-                />
-              </div>
-
-              {/* Resizer */}
-              <div
-                className="Resizer"
-                style={{
-                  width: '3px',
-                  background: '#ddd',
-                  cursor: 'col-resize',
-                  flexShrink: 0
-                }}
-              />
-            </>
-          )}
-
-          {/* Show Editor button when collapsed */}
-          {isEditorCollapsed && (
-            <button
-              onClick={() => setIsEditorCollapsed(false)}
-              style={{
-                position: 'absolute',
-                left: '12px',
-                top: '80px',
-                zIndex: 10,
-                background: '#3b82f6',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '8px 12px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-              }}
-              title="Show Editor"
-            >
-              ← Code
-            </button>
-          )}
-
-          {/* Center: Diagram and Graph with collapse functionality */}
-          <div className="visualization-panel" style={{
-            flex: 1,
+          <div style={{
+            width: isEditorCollapsed ? '48px' : `${editorWidth}%`,
+            minWidth: isEditorCollapsed ? '48px' : '250px',
             position: 'relative',
-            display: isMainViewCollapsed ? 'none' : 'flex',
+            transition: isDragging === 'editor' ? 'none' : 'width 0.3s ease',
+            overflow: 'hidden',
+            display: 'flex',
             flexDirection: 'column',
-            minWidth: 0, // Important for flex shrinking
           }}>
             <button
-              onClick={() => setIsMainViewCollapsed(true)}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsEditorCollapsed(!isEditorCollapsed);
+              }}
               style={{
                 position: 'absolute',
                 top: '12px',
-                right: '12px',
+                right: isEditorCollapsed ? '50%' : '12px',
+                transform: isEditorCollapsed ? 'translateX(50%)' : 'none',
                 zIndex: 10,
                 background: 'rgba(0, 0, 0, 0.7)',
                 color: 'white',
@@ -195,57 +157,94 @@ graph Resources_Only {
                 padding: '4px 8px',
                 cursor: 'pointer',
                 fontSize: '12px',
+                transition: 'right 0.3s ease, transform 0.3s ease',
               }}
-              title="Hide Main View"
+              title={isEditorCollapsed ? "Show Editor" : "Hide Editor"}
             >
-              →
+              {isEditorCollapsed ? '→' : '←'}
             </button>
-            <div className="diagram-container">
-              <SystemDiagram model={model} />
-            </div>
-            <div className="graph-container">
-              <SystemGraph
-                key={modelVersion}
-                model={model}
-                isRunning={isRunning}
-                currentTime={currentTime}
+            
+            <div style={{
+              display: isEditorCollapsed ? 'none' : 'flex',
+              flexDirection: 'column',
+              height: '100%',
+              width: '100%',
+            }}>
+              <DSLEditor
+                code={dslCode}
+                onChange={setDslCode}
+                onModelUpdate={useCallback((newModel) => {
+                  setModel(newModel);
+                  setModelVersion(prev => prev + 1);
+                }, [])}
               />
+            </div>
+            
+            <div style={{
+              display: isEditorCollapsed ? 'flex' : 'none',
+              height: '100%',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: '#f9fafb',
+              borderRight: '1px solid #e5e7eb',
+            }} />
+          </div>
+
+          {/* Resizer - always present but hidden when collapsed */}
+          <div
+            className="Resizer"
+            style={{
+              width: isEditorCollapsed ? '0px' : '6px',
+              background: isDragging === 'editor' ? '#3b82f6' : '#ddd',
+              cursor: isEditorCollapsed ? 'default' : 'col-resize',
+              flexShrink: 0,
+              transition: isDragging === 'editor' ? 'none' : 'all 0.3s ease',
+              position: 'relative',
+            }}
+            onMouseDown={(e) => {
+              if (!isEditorCollapsed) {
+                setIsDragging('editor');
+                e.preventDefault();
+              }
+            }}
+          >
+            {!isEditorCollapsed && (
+              <div style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                width: '2px',
+                height: '20px',
+                background: '#999',
+                borderRadius: '1px',
+              }} />
+            )}
+          </div>
+
+
+          {/* Center: Diagram */}
+          <div className="visualization-panel" style={{
+            flex: 1,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <div className="diagram-container" style={{ flex: 1 }}>
+              <SystemDiagram model={model} />
             </div>
           </div>
 
-          {/* Show Main View button when collapsed */}
-          {isMainViewCollapsed && (
-            <button
-              onClick={() => setIsMainViewCollapsed(false)}
-              style={{
-                position: 'absolute',
-                left: '50%',
-                top: '80px',
-                transform: 'translateX(-50%)',
-                zIndex: 10,
-                background: '#10b981',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '8px 12px',
-                cursor: 'pointer',
-                fontSize: '12px',
-                fontWeight: '500',
-                boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
-              }}
-              title="Show Main View"
-            >
-              Main View 📊
-            </button>
-          )}
-
           {/* Right: Graph Sidebar */}
-          {/* <GraphSidebar
+          <GraphSidebar
             model={model}
             data={graphData}
             isCollapsed={isGraphSidebarCollapsed}
             onToggleCollapse={() => setIsGraphSidebarCollapsed(!isGraphSidebarCollapsed)}
-          /> */}
+            width={sidebarWidth}
+            isDragging={isDragging === 'sidebar'}
+            onStartResize={() => setIsDragging('sidebar')}
+          />
         </div>
       </div>
 
@@ -255,7 +254,10 @@ graph Resources_Only {
           model={model}
           isRunning={isRunning}
           setIsRunning={setIsRunning}
-          onTimeUpdate={setCurrentTime}
+          onTimeUpdate={(time) => {
+            setCurrentTime(time);
+            setDataUpdateTrigger(prev => prev + 1);
+          }}
         />
       </div>
     </div>

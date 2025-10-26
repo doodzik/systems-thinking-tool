@@ -17,6 +17,7 @@
     "elkjs": "^0.10.0",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.4",
     "react-split-pane-v2": "^1.0.3",
     "reactflow": "^11.11.4",
     "recharts": "^3.2.0",
