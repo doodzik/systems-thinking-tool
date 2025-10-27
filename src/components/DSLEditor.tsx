@@ -31,7 +31,9 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
 
     // Define syntax highlighting
     monaco.languages.setMonarchTokensProvider('system-dynamics', {
-      keywords: ['stock', 'flow', 'from', 'to', 'rate', 'initial', 'units', 'source', 'sink', 'terminate', 'when', 'min', 'max', 'graph', 'title', 'variables', 'type', 'yAxisLabel', 'color'],
+      keywords: ['stock', 'flow', 'const', 'from', 'to', 'rate', 'initial', 'units', 'source', 'sink', 'terminate', 'when', 'min', 'max', 'graph', 'title', 'variables', 'type', 'yAxisLabel', 'color'],
+      builtinConstants: ['PI', 'E', 'TIME', 'dt'],
+      mathFunctions: ['sin', 'cos', 'tan', 'sqrt', 'abs', 'floor', 'ceil', 'round', 'min', 'max', 'pow', 'exp', 'log'],
 
       tokenizer: {
         root: [
@@ -39,6 +41,8 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
           [/[a-zA-Z_]\w*/, {
             cases: {
               '@keywords': 'keyword',
+              '@builtinConstants': 'constant',
+              '@mathFunctions': 'function',
               '@default': 'identifier'
             }
           }],
@@ -57,6 +61,8 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
       inherit: true,
       rules: [
         { token: 'keyword', foreground: '569cd6' },
+        { token: 'constant', foreground: '4fc1ff' },
+        { token: 'function', foreground: 'dcdcaa' },
         { token: 'identifier', foreground: '9cdcfe' },
         { token: 'number', foreground: 'b5cea8' },
         { token: 'string', foreground: 'ce9178' },

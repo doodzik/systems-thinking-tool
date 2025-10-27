@@ -95,8 +95,10 @@ export interface GraphConfig {
 export class SystemModel {
   stocks: Map<string, Stock> = new Map();
   flows: Map<string, Flow> = new Map();
+  constants: Map<string, number> = new Map(); // User-defined constants
   time: number = 0;
   stepCount: number = 0; // Global variable for step count
+  dt: number = 1; // Simulation time step
   history: Array<{time: number, state: Map<string, number>}> = [];
   private initialState: Map<string, number> = new Map();
   terminationCondition?: (model: SystemModel) => boolean;
@@ -146,26 +148,73 @@ export class SystemModel {
   }
 
   /**
-   * Get global variable values
+   * Add a constant to the model
+   */
+  addConstant(name: string, value: number): void {
+    this.constants.set(name, value);
+  }
+
+  /**
+   * Get global variable values including built-in constants
    */
   getGlobalVariables(): Map<string, number> {
     return new Map([
+      ['TIME', this.time],
+      ['dt', this.dt],
+      ['PI', Math.PI],
+      ['E', Math.E],
+      // Legacy support
       ['step', this.stepCount],
       ['time', this.time],
     ]);
   }
 
   /**
-   * Replace global variables in expression string with their values
+   * Get all constants (user-defined + built-in)
+   */
+  getAllConstants(): Map<string, number> {
+    const allConstants = new Map<string, number>();
+    
+    // Add built-in constants
+    allConstants.set('PI', Math.PI);
+    allConstants.set('E', Math.E);
+    allConstants.set('TIME', this.time);
+    allConstants.set('dt', this.dt);
+    
+    // Add user-defined constants
+    this.constants.forEach((value, name) => {
+      allConstants.set(name, value);
+    });
+    
+    return allConstants;
+  }
+
+  /**
+   * Replace global variables and constants in expression string with their values
    */
   replaceGlobalVariables(expression: string): string {
     let result = expression;
+    
+    // Replace $variableName syntax (legacy support for $step, $time)
     const globals = this.getGlobalVariables();
-
     globals.forEach((value, name) => {
-      // Replace $variableName with the actual value
       result = result.replace(new RegExp('\\$' + name + '\\b', 'g'), value.toString());
     });
+
+    // Replace constants and built-in variables (without $ prefix)
+    const allConstants = this.getAllConstants();
+    allConstants.forEach((value, name) => {
+      // Use word boundary to avoid partial matches
+      result = result.replace(new RegExp('\\b' + name + '\\b', 'g'), value.toString());
+    });
+
+    // Replace user-defined constants
+    this.constants.forEach((value, name) => {
+      result = result.replace(new RegExp('\\b' + name + '\\b', 'g'), value.toString());
+    });
+
+    // Make Math functions available in expression context
+    // This is handled in the Function() eval with Math object
 
     return result;
   }

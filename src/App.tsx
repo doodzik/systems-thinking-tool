@@ -25,6 +25,14 @@ function App() {
 
   // Default DSL code
   const defaultDslCode = `// Population Growth with Resource Constraints
+// Model-level constants
+const BirthRate = 0.02
+const DeathRate = 0.01
+const DeathRateStressed = 0.25
+const ConsumptionRate = 0.1
+const ResourceThreshold = 50
+const MaxSteps = 100
+
 stock Population {
   initial: 100
   min: 0
@@ -40,24 +48,24 @@ stock Resources {
 flow Births {
   from: Population
   to: Population
-  rate: Population * 0.02
+  rate: Population * BirthRate
 }
 
 flow Deaths {
   from: Population
   to: sink
-  rate: Population * (0.01 + (Resources < 50 ? 0.25 : 0))
+  rate: Population * (DeathRate + (Resources < ResourceThreshold ? DeathRateStressed : 0))
   units: "people/year"
 }
 
 flow Consumption {
   from: Resources
   to: sink
-  rate: Population * 0.1
+  rate: Population * ConsumptionRate
 }
 
 terminate {
-  when: Population <= 5 || Resources <= 0 || $step >= 100
+  when: Population <= 5 || Resources <= 0 || TIME >= MaxSteps
 }
 
 graph Population_vs_Resources {
@@ -66,7 +74,6 @@ graph Population_vs_Resources {
   type: line
   yAxisLabel: "Count"
 }
-
 
 graph Resources_Only {
   title: "Resource Depletion"

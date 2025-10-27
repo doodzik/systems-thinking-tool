@@ -25,6 +25,58 @@ export function parseDSL(code: string): SystemModel {
     // Skip comments and empty lines
     if (trimmed.startsWith('//') || trimmed === '') continue;
 
+    // Constant definition
+    if (trimmed.startsWith('const ')) {
+      const match = trimmed.match(/const\s+(\w+)\s*=\s*(.+)/);
+      if (match) {
+        const constName = match[1];
+        const constValue = match[2].trim();
+        
+        // Parse the value (should be a number or expression)
+        let parsedValue: number;
+        if (!isNaN(Number(constValue))) {
+          parsedValue = Number(constValue);
+        } else {
+          // Try to evaluate as expression (may contain other constants or Math functions)
+          try {
+            // Create evaluation context with Math functions
+            const evalContext = {
+              PI: Math.PI,
+              E: Math.E,
+              sin: Math.sin,
+              cos: Math.cos,
+              tan: Math.tan,
+              sqrt: Math.sqrt,
+              abs: Math.abs,
+              floor: Math.floor,
+              ceil: Math.ceil,
+              round: Math.round,
+              min: Math.min,
+              max: Math.max,
+              pow: Math.pow,
+              exp: Math.exp,
+              log: Math.log,
+            };
+            
+            // Replace any already-defined constants in the expression
+            let expr = constValue;
+            model.constants.forEach((value, name) => {
+              expr = expr.replace(new RegExp('\\b' + name + '\\b', 'g'), value.toString());
+            });
+            
+            // Evaluate with Math functions available
+            parsedValue = new Function(...Object.keys(evalContext), `"use strict"; return (${expr})`)(...Object.values(evalContext));
+          } catch (error) {
+            console.warn(`Failed to parse constant ${constName}: ${constValue}`, error);
+            parsedValue = 0;
+          }
+        }
+        
+        model.addConstant(constName, parsedValue);
+      }
+      continue;
+    }
+
     // Stock definition
     if (trimmed.startsWith('stock ')) {
       const match = trimmed.match(/stock\s+(\w+)\s*{/);
@@ -130,8 +182,23 @@ export function parseDSL(code: string): SystemModel {
               expr = expr.replace(new RegExp('\\b' + name + '\\b', 'g'), stock.value.toString());
             });
             try {
-              // Safe evaluation using Function constructor
-              return Function('"use strict"; return (' + expr + ')')();
+              // Safe evaluation using Function constructor with Math functions
+              const evalContext = {
+                sin: Math.sin,
+                cos: Math.cos,
+                tan: Math.tan,
+                sqrt: Math.sqrt,
+                abs: Math.abs,
+                floor: Math.floor,
+                ceil: Math.ceil,
+                round: Math.round,
+                min: Math.min,
+                max: Math.max,
+                pow: Math.pow,
+                exp: Math.exp,
+                log: Math.log,
+              };
+              return new Function(...Object.keys(evalContext), '"use strict"; return (' + expr + ')')(...Object.values(evalContext));
             } catch {
               return 0;
             }
@@ -153,8 +220,23 @@ export function parseDSL(code: string): SystemModel {
               expr = expr.replace(new RegExp('\\b' + name + '\\b', 'g'), stock.value.toString());
             });
             try {
-              // Safe evaluation using Function constructor
-              return Function('"use strict"; return (' + expr + ')')();
+              // Safe evaluation using Function constructor with Math functions
+              const evalContext = {
+                sin: Math.sin,
+                cos: Math.cos,
+                tan: Math.tan,
+                sqrt: Math.sqrt,
+                abs: Math.abs,
+                floor: Math.floor,
+                ceil: Math.ceil,
+                round: Math.round,
+                min: Math.min,
+                max: Math.max,
+                pow: Math.pow,
+                exp: Math.exp,
+                log: Math.log,
+              };
+              return new Function(...Object.keys(evalContext), '"use strict"; return (' + expr + ')')(...Object.values(evalContext));
             } catch {
               return false;
             }
