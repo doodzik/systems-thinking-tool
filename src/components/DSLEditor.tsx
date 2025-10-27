@@ -34,6 +34,7 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
       keywords: ['stock', 'flow', 'const', 'from', 'to', 'rate', 'initial', 'units', 'source', 'sink', 'terminate', 'when', 'min', 'max', 'graph', 'title', 'variables', 'type', 'yAxisLabel', 'color'],
       builtinConstants: ['PI', 'E', 'TIME', 'dt'],
       mathFunctions: ['sin', 'cos', 'tan', 'sqrt', 'abs', 'floor', 'ceil', 'round', 'min', 'max', 'pow', 'exp', 'log'],
+      delayFunctions: ['SMOOTH', 'DELAY', 'DELAY_GRADUAL'],
 
       tokenizer: {
         root: [
@@ -43,6 +44,7 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
               '@keywords': 'keyword',
               '@builtinConstants': 'constant',
               '@mathFunctions': 'function',
+              '@delayFunctions': 'type',
               '@default': 'identifier'
             }
           }],
@@ -63,6 +65,7 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
         { token: 'keyword', foreground: '569cd6' },
         { token: 'constant', foreground: '4fc1ff' },
         { token: 'function', foreground: 'dcdcaa' },
+        { token: 'type', foreground: '4ec9b0' },
         { token: 'identifier', foreground: '9cdcfe' },
         { token: 'number', foreground: 'b5cea8' },
         { token: 'string', foreground: 'ce9178' },

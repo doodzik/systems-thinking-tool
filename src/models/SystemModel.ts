@@ -90,6 +90,16 @@ export interface GraphConfig {
 }
 
 /**
+ * Delay buffer for tracking historical values
+ */
+interface DelayBuffer {
+  values: Array<{ time: number; value: number }>;
+  delayTime: number;
+  type: 'smooth' | 'delay' | 'delay_gradual';
+  smoothedValue?: number; // For SMOOTH function
+}
+
+/**
  * Main system model containing stocks and flows
  */
 export class SystemModel {
@@ -105,6 +115,10 @@ export class SystemModel {
   terminationExpression?: string;
   isTerminated: boolean = false;
   graphs: Map<string, GraphConfig> = new Map();
+  
+  // Delay tracking - key is unique identifier for each delay function instance
+  private delayBuffers: Map<string, DelayBuffer> = new Map();
+  private nextDelayId: number = 0;
 
   /**
    * Add a stock to the model
@@ -279,6 +293,149 @@ export class SystemModel {
   }
 
   /**
+   * SMOOTH function - Exponential smoothing/averaging
+   * Creates a moving average that gradually adapts to new values
+   */
+  SMOOTH(input: number, smoothingTime: number, bufferId: string): number {
+    // Get or create buffer
+    let buffer = this.delayBuffers.get(bufferId);
+    if (!buffer) {
+      buffer = {
+        values: [],
+        delayTime: smoothingTime,
+        type: 'smooth',
+        smoothedValue: input, // Initialize with current input
+      };
+      this.delayBuffers.set(bufferId, buffer);
+    }
+
+    // Update smoothed value using exponential smoothing
+    // smoothedValue = smoothedValue + (input - smoothedValue) / smoothingTime * dt
+    const alpha = this.dt / smoothingTime;
+    const newSmoothedValue = buffer.smoothedValue! + (input - buffer.smoothedValue!) * alpha;
+    buffer.smoothedValue = newSmoothedValue;
+
+    // Record current value for history
+    buffer.values.push({ time: this.time, value: input });
+    
+    // Keep reasonable history length
+    const maxHistoryTime = smoothingTime * 5;
+    while (buffer.values.length > 0 && this.time - buffer.values[0].time > maxHistoryTime) {
+      buffer.values.shift();
+    }
+
+    return newSmoothedValue;
+  }
+
+  /**
+   * DELAY function - Physical pipeline delay
+   * What goes in now comes out exactly N time periods later
+   */
+  DELAY(input: number, delayTime: number, bufferId: string): number {
+    // Get or create buffer
+    let buffer = this.delayBuffers.get(bufferId);
+    if (!buffer) {
+      buffer = {
+        values: [],
+        delayTime: delayTime,
+        type: 'delay',
+      };
+      this.delayBuffers.set(bufferId, buffer);
+    }
+
+    // Add current input to buffer
+    buffer.values.push({ time: this.time, value: input });
+
+    // Find value that was added exactly delayTime ago
+    const targetTime = this.time - delayTime;
+    
+    // If we don't have enough history, return initial value
+    if (buffer.values.length < 2 || buffer.values[0].time > targetTime) {
+      return input; // Return current input as initial value
+    }
+
+    // Find the value at targetTime using linear interpolation
+    for (let i = 1; i < buffer.values.length; i++) {
+      const curr = buffer.values[i];
+      const prev = buffer.values[i - 1];
+      
+      if (curr.time >= targetTime) {
+        // Interpolate between prev and curr
+        if (curr.time === prev.time) {
+          return prev.value;
+        }
+        const ratio = (targetTime - prev.time) / (curr.time - prev.time);
+        return prev.value + ratio * (curr.value - prev.value);
+      }
+    }
+
+    // If targetTime is beyond our buffer, return the last value
+    return buffer.values[buffer.values.length - 1].value;
+  }
+
+  /**
+   * DELAY_GRADUAL function - Smooth material delay
+   * Models processes with natural variation in timing (third-order delay)
+   */
+  DELAY_GRADUAL(input: number, delayTime: number, bufferId: string): number {
+    // Get or create buffer
+    let buffer = this.delayBuffers.get(bufferId);
+    if (!buffer) {
+      buffer = {
+        values: [],
+        delayTime: delayTime,
+        type: 'delay_gradual',
+      };
+      this.delayBuffers.set(bufferId, buffer);
+    }
+
+    // Add current input to buffer
+    buffer.values.push({ time: this.time, value: input });
+
+    // DELAY_GRADUAL uses a third-order delay which creates a bell curve response
+    // Peak output occurs around 1.5 × delay time
+    // We'll implement this as a weighted average of recent history
+    
+    const targetTime = this.time - delayTime;
+    
+    // If we don't have enough history, return initial value
+    if (buffer.values.length < 2 || buffer.values[0].time > targetTime - delayTime) {
+      return input;
+    }
+
+    // Calculate weighted average using a bell curve (Gaussian-like) weighting
+    // Weight function: exp(-((t - targetTime) / (delayTime/3))^2)
+    let weightedSum = 0;
+    let totalWeight = 0;
+    
+    for (const point of buffer.values) {
+      const timeDiff = point.time - targetTime;
+      const normalizedDiff = timeDiff / (delayTime / 3);
+      const weight = Math.exp(-(normalizedDiff * normalizedDiff));
+      
+      weightedSum += point.value * weight;
+      totalWeight += weight;
+    }
+
+    const result = totalWeight > 0 ? weightedSum / totalWeight : input;
+
+    // Clean up old values
+    const maxHistoryTime = delayTime * 4;
+    while (buffer.values.length > 0 && this.time - buffer.values[0].time > maxHistoryTime) {
+      buffer.values.shift();
+    }
+
+    return result;
+  }
+
+  /**
+   * Generate unique ID for delay buffer
+   */
+  generateDelayId(): string {
+    return `delay_${this.nextDelayId++}`;
+  }
+
+  /**
    * Reset model to initial state
    */
   reset(): void {
@@ -286,6 +443,8 @@ export class SystemModel {
     this.stepCount = 0;
     this.history = [];
     this.isTerminated = false;
+    this.delayBuffers.clear(); // Clear delay buffers
+    this.nextDelayId = 0;
 
     // Reset stocks to initial values
     this.initialState.forEach((initialValue, stockName) => {

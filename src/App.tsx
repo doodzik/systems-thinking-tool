@@ -31,6 +31,7 @@ const DeathRate = 0.01
 const DeathRateStressed = 0.25
 const ConsumptionRate = 0.1
 const ResourceThreshold = 50
+const MortalityDelay = 10
 const MaxSteps = 100
 
 stock Population {
@@ -51,10 +52,12 @@ flow Births {
   rate: Population * BirthRate
 }
 
+// Deaths with DELAY_GRADUAL - resource stress affects mortality gradually
+// Takes ~10 time periods for resource scarcity to fully impact death rate
 flow Deaths {
   from: Population
   to: sink
-  rate: Population * (DeathRate + (Resources < ResourceThreshold ? DeathRateStressed : 0))
+  rate: Population * DELAY_GRADUAL(Resources < ResourceThreshold ? DeathRateStressed : DeathRate, MortalityDelay)
   units: "people/year"
 }
 

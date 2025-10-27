@@ -172,6 +172,22 @@ export function parseDSL(code: string): SystemModel {
           // Parse expression
           const rateExpr = currentConfig.rate;
           rateExpression = rateExpr; // Store original expression
+          // Generate unique delay IDs for any delay functions in the expression
+          const delayIdMap = new Map<string, string>();
+          let delayIdCounter = 0;
+          let processedExpr = rateExpr;
+          
+          // Find all SMOOTH, DELAY, and DELAY_GRADUAL calls and assign unique IDs
+          const delayFunctions = ['SMOOTH', 'DELAY', 'DELAY_GRADUAL'];
+          for (const funcName of delayFunctions) {
+            const regex = new RegExp(`${funcName}\\s*\\(`, 'g');
+            let match;
+            while ((match = regex.exec(rateExpr)) !== null) {
+              const callKey = `${funcName}_${currentName}_${delayIdCounter++}`;
+              delayIdMap.set(callKey, model.generateDelayId());
+            }
+          }
+          
           rate = (m: SystemModel) => {
             // Simple expression parser
             let expr = rateExpr;
@@ -181,6 +197,29 @@ export function parseDSL(code: string): SystemModel {
             m.stocks.forEach((stock, name) => {
               expr = expr.replace(new RegExp('\\b' + name + '\\b', 'g'), stock.value.toString());
             });
+            
+            // Replace delay function calls with method calls that include buffer IDs
+            let delayCounter = 0;
+            for (const funcName of delayFunctions) {
+              expr = expr.replace(new RegExp(`${funcName}\\s*\\(`, 'g'), () => {
+                const callKey = `${funcName}_${currentName}_${delayCounter++}`;
+                const bufferId = delayIdMap.get(callKey) || m.generateDelayId();
+                return `m.${funcName}(`;
+              });
+            }
+            
+            // Inject buffer IDs into delay function calls
+            // We need to add the bufferId as the third parameter
+            delayCounter = 0;
+            for (const funcName of delayFunctions) {
+              const pattern = new RegExp(`m\\.${funcName}\\(([^,]+),\\s*([^)]+)\\)`, 'g');
+              expr = expr.replace(pattern, (_match: string, input: string, delayTime: string) => {
+                const callKey = `${funcName}_${currentName}_${delayCounter++}`;
+                const bufferId = delayIdMap.get(callKey) || m.generateDelayId();
+                return `m.${funcName}(${input}, ${delayTime}, "${bufferId}")`;
+              });
+            }
+            
             try {
               // Safe evaluation using Function constructor with Math functions
               const evalContext = {
@@ -197,9 +236,11 @@ export function parseDSL(code: string): SystemModel {
                 pow: Math.pow,
                 exp: Math.exp,
                 log: Math.log,
+                m: m, // Make model available for delay function calls
               };
               return new Function(...Object.keys(evalContext), '"use strict"; return (' + expr + ')')(...Object.values(evalContext));
-            } catch {
+            } catch (error) {
+              console.error('Expression evaluation error:', error, 'Expression:', expr);
               return 0;
             }
           };
