@@ -203,7 +203,7 @@ export function MetricsPanel({ model, isVisible, onToggle }: MetricsPanelProps) 
         title: `${name} (Rate)`,
         value: currentRate,
         change: 0, // Flow rates don't have historical change tracking yet
-        units: 'per step',
+        units: flow.units || 'per step',
         trend: flowHistory.slice(-10),
       });
     });

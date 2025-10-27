@@ -422,6 +422,7 @@ export function SystemDiagram({ model }: SystemDiagramProps) {
           name: flowName,
           rate: flow.rate,
           currentRate,
+          units: flow.units,
         },
         draggable: true,
       });

@@ -48,19 +48,22 @@ export class Flow {
   to: Stock | null;    // null = infinite sink
   rate: number | ((model: SystemModel) => number);
   rateExpression?: string; // Store original DSL expression for dependency tracking
+  units?: string;
 
   constructor(
     name: string,
     from: Stock | null,
     to: Stock | null,
     rate: number | ((model: SystemModel) => number),
-    rateExpression?: string
+    rateExpression?: string,
+    units?: string
   ) {
     this.name = name;
     this.from = from;
     this.to = to;
     this.rate = rate;
     this.rateExpression = rateExpression;
+    this.units = units;
   }
 
   /**
@@ -119,9 +122,10 @@ export class SystemModel {
     from: Stock | null,
     to: Stock | null,
     rate: number | ((model: SystemModel) => number),
-    rateExpression?: string
+    rateExpression?: string,
+    units?: string
   ): Flow {
-    const flow = new Flow(name, from, to, rate, rateExpression);
+    const flow = new Flow(name, from, to, rate, rateExpression, units);
     this.flows.set(name, flow);
     return flow;
   }

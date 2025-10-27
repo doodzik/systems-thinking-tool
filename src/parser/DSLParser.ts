@@ -138,7 +138,7 @@ export function parseDSL(code: string): SystemModel {
           };
         }
 
-        model.addFlow(currentName, from, to, rate, rateExpression);
+        model.addFlow(currentName, from, to, rate, rateExpression, currentConfig.units);
       } else if (currentBlock === 'terminate') {
         // Parse termination condition
         if (terminateConfig.when) {

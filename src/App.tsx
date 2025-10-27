@@ -47,6 +47,7 @@ flow Deaths {
   from: Population
   to: sink
   rate: Population * (0.01 + (Resources < 50 ? 0.25 : 0))
+  units: "people/year"
 }
 
 flow Consumption {

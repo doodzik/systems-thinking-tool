@@ -7,6 +7,7 @@ interface FlowNodeProps {
     rate: number | (() => number) | string;
     currentRate?: number;
     flowType?: 'inflow' | 'outflow' | 'internal';
+    units?: string;
   };
 }
 
@@ -199,6 +200,18 @@ export function FlowNode({ data }: FlowNodeProps) {
           </span>
         )}
       </div>
+
+      {/* Units display */}
+      {data.units && (
+        <div style={{
+          fontSize: '7px',
+          color: '#9ca3af',
+          textAlign: 'center',
+          marginTop: '1px',
+        }}>
+          {data.units}
+        </div>
+      )}
 
     </div>
   );
