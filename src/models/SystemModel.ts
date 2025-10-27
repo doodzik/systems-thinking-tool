@@ -100,6 +100,22 @@ interface DelayBuffer {
 }
 
 /**
+ * 1D Lookup table for nonlinear relationships
+ */
+export interface LookupTable {
+  name: string;
+  points: Array<{ x: number; y: number }>;
+}
+
+/**
+ * 2D Lookup table for multi-factor relationships
+ */
+export interface LookupTable2D {
+  name: string;
+  points: Array<{ x: number; y: number; z: number }>;
+}
+
+/**
  * Main system model containing stocks and flows
  */
 export class SystemModel {
@@ -119,6 +135,10 @@ export class SystemModel {
   // Delay tracking - key is unique identifier for each delay function instance
   private delayBuffers: Map<string, DelayBuffer> = new Map();
   private nextDelayId: number = 0;
+
+  // Lookup tables for nonlinear relationships
+  lookupTables: Map<string, LookupTable> = new Map();
+  lookupTables2D: Map<string, LookupTable2D> = new Map();
 
   /**
    * Add a stock to the model
@@ -166,6 +186,22 @@ export class SystemModel {
    */
   addConstant(name: string, value: number): void {
     this.constants.set(name, value);
+  }
+
+  /**
+   * Add a 1D lookup table to the model
+   */
+  addLookupTable(name: string, points: Array<{ x: number; y: number }>): void {
+    // Sort points by x value for efficient interpolation
+    const sortedPoints = [...points].sort((a, b) => a.x - b.x);
+    this.lookupTables.set(name, { name, points: sortedPoints });
+  }
+
+  /**
+   * Add a 2D lookup table to the model
+   */
+  addLookupTable2D(name: string, points: Array<{ x: number; y: number; z: number }>): void {
+    this.lookupTables2D.set(name, { name, points });
   }
 
   /**
@@ -426,6 +462,142 @@ export class SystemModel {
     }
 
     return result;
+  }
+
+  /**
+   * LOOKUP function - 1D linear interpolation
+   * For arbitrary nonlinear relationships based on empirical data
+   */
+  LOOKUP(input: number, tableName: string | Array<[number, number]>): number {
+    let table: LookupTable;
+    
+    // Handle inline tables
+    if (Array.isArray(tableName)) {
+      table = {
+        name: 'inline',
+        points: tableName.map(([x, y]) => ({ x, y })).sort((a, b) => a.x - b.x),
+      };
+    } else {
+      // Named table
+      const namedTable = this.lookupTables.get(tableName);
+      if (!namedTable) {
+        console.error(`Lookup table "${tableName}" not found`);
+        return 0;
+      }
+      table = namedTable;
+    }
+    
+    const points = table.points;
+    
+    // Handle edge cases
+    if (points.length === 0) return 0;
+    if (points.length === 1) return points[0].y;
+    
+    // Extrapolation: use first/last value if outside range
+    if (input <= points[0].x) return points[0].y;
+    if (input >= points[points.length - 1].x) return points[points.length - 1].y;
+    
+    // Linear interpolation
+    for (let i = 1; i < points.length; i++) {
+      if (input <= points[i].x) {
+        const p0 = points[i - 1];
+        const p1 = points[i];
+        const ratio = (input - p0.x) / (p1.x - p0.x);
+        return p0.y + ratio * (p1.y - p0.y);
+      }
+    }
+    
+    return points[points.length - 1].y;
+  }
+  
+  /**
+   * LOOKUP2D function - 2D bilinear interpolation
+   * For relationships with two inputs
+   */
+  LOOKUP2D(inputX: number, inputY: number, tableName: string): number {
+    const table = this.lookupTables2D.get(tableName);
+    if (!table) {
+      console.error(`2D Lookup table "${tableName}" not found`);
+      return 0;
+    }
+    
+    const points = table.points;
+    if (points.length === 0) return 0;
+    
+    // Find unique X and Y values
+    const xValues = [...new Set(points.map(p => p.x))].sort((a, b) => a - b);
+    const yValues = [...new Set(points.map(p => p.y))].sort((a, b) => a - b);
+    
+    // Clamp input to table bounds
+    const clampedX = Math.max(xValues[0], Math.min(xValues[xValues.length - 1], inputX));
+    const clampedY = Math.max(yValues[0], Math.min(yValues[yValues.length - 1], inputY));
+    
+    // Find surrounding X values
+    let x0Index = 0;
+    let x1Index = 0;
+    for (let i = 0; i < xValues.length - 1; i++) {
+      if (clampedX >= xValues[i] && clampedX <= xValues[i + 1]) {
+        x0Index = i;
+        x1Index = i + 1;
+        break;
+      }
+    }
+    if (clampedX === xValues[xValues.length - 1]) {
+      x0Index = xValues.length - 1;
+      x1Index = xValues.length - 1;
+    }
+    
+    // Find surrounding Y values
+    let y0Index = 0;
+    let y1Index = 0;
+    for (let i = 0; i < yValues.length - 1; i++) {
+      if (clampedY >= yValues[i] && clampedY <= yValues[i + 1]) {
+        y0Index = i;
+        y1Index = i + 1;
+        break;
+      }
+    }
+    if (clampedY === yValues[yValues.length - 1]) {
+      y0Index = yValues.length - 1;
+      y1Index = yValues.length - 1;
+    }
+    
+    // Get Z values at corners
+    const getZ = (xIdx: number, yIdx: number): number => {
+      const x = xValues[xIdx];
+      const y = yValues[yIdx];
+      const point = points.find(p => p.x === x && p.y === y);
+      return point ? point.z : 0;
+    };
+    
+    const z00 = getZ(x0Index, y0Index);
+    const z10 = getZ(x1Index, y0Index);
+    const z01 = getZ(x0Index, y1Index);
+    const z11 = getZ(x1Index, y1Index);
+    
+    // Bilinear interpolation
+    const x0 = xValues[x0Index];
+    const x1 = xValues[x1Index];
+    const y0 = yValues[y0Index];
+    const y1 = yValues[y1Index];
+    
+    if (x0 === x1 && y0 === y1) return z00;
+    if (x0 === x1) {
+      const ty = (clampedY - y0) / (y1 - y0);
+      return z00 + ty * (z01 - z00);
+    }
+    if (y0 === y1) {
+      const tx = (clampedX - x0) / (x1 - x0);
+      return z00 + tx * (z10 - z00);
+    }
+    
+    const tx = (clampedX - x0) / (x1 - x0);
+    const ty = (clampedY - y0) / (y1 - y0);
+    
+    const z0 = z00 + tx * (z10 - z00);
+    const z1 = z01 + tx * (z11 - z01);
+    
+    return z0 + ty * (z1 - z0);
   }
 
   /**

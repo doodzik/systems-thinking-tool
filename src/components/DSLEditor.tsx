@@ -31,10 +31,11 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
 
     // Define syntax highlighting
     monaco.languages.setMonarchTokensProvider('system-dynamics', {
-      keywords: ['stock', 'flow', 'const', 'from', 'to', 'rate', 'initial', 'units', 'source', 'sink', 'terminate', 'when', 'min', 'max', 'graph', 'title', 'variables', 'type', 'yAxisLabel', 'color'],
+      keywords: ['stock', 'flow', 'const', 'from', 'to', 'rate', 'initial', 'units', 'source', 'sink', 'terminate', 'when', 'min', 'max', 'graph', 'title', 'variables', 'type', 'yAxisLabel', 'color', 'lookup', 'lookup2d'],
       builtinConstants: ['PI', 'E', 'TIME', 'dt'],
       mathFunctions: ['sin', 'cos', 'tan', 'sqrt', 'abs', 'floor', 'ceil', 'round', 'min', 'max', 'pow', 'exp', 'log'],
       delayFunctions: ['SMOOTH', 'DELAY', 'DELAY_GRADUAL'],
+      lookupFunctions: ['LOOKUP', 'LOOKUP2D'],
 
       tokenizer: {
         root: [
@@ -45,6 +46,7 @@ export function DSLEditor({ code, onChange, onModelUpdate }: DSLEditorProps) {
               '@builtinConstants': 'constant',
               '@mathFunctions': 'function',
               '@delayFunctions': 'type',
+              '@lookupFunctions': 'type',
               '@default': 'identifier'
             }
           }],

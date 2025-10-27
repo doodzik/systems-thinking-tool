@@ -13,11 +13,13 @@ export function parseDSL(code: string): SystemModel {
   const model = new SystemModel();
   const lines = code.split('\n');
 
-  let currentBlock: 'stock' | 'flow' | 'terminate' | 'graph' | null = null;
+  let currentBlock: 'stock' | 'flow' | 'terminate' | 'graph' | 'lookup' | 'lookup2d' | null = null;
   let currentName = '';
   let currentConfig: any = {};
   let terminateConfig: any = {};
   let graphConfig: any = {};
+  let lookupPoints: Array<{ x: number; y: number }> = [];
+  let lookup2dPoints: Array<{ x: number; y: number; z: number }> = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -113,6 +115,51 @@ export function parseDSL(code: string): SystemModel {
       }
     }
 
+    // Lookup table definition (1D)
+    else if (trimmed.startsWith('lookup ')) {
+      const match = trimmed.match(/lookup\s+(\w+)\s*{/);
+      if (match) {
+        currentBlock = 'lookup';
+        currentName = match[1];
+        lookupPoints = [];
+      }
+    }
+
+    // Lookup table definition (2D)
+    else if (trimmed.startsWith('lookup2d ')) {
+      const match = trimmed.match(/lookup2d\s+(\w+)\s*{/);
+      if (match) {
+        currentBlock = 'lookup2d';
+        currentName = match[1];
+        lookup2dPoints = [];
+      }
+    }
+
+    // Lookup table point (1D format: [x, y])
+    else if (currentBlock === 'lookup' && trimmed.startsWith('[')) {
+      const match = trimmed.match(/\[([^,]+),\s*([^\]]+)\]/);
+      if (match) {
+        const x = parseFloat(match[1].trim());
+        const y = parseFloat(match[2].trim());
+        if (!isNaN(x) && !isNaN(y)) {
+          lookupPoints.push({ x, y });
+        }
+      }
+    }
+
+    // Lookup table point (2D format: [x, y]: z)
+    else if (currentBlock === 'lookup2d' && trimmed.startsWith('[')) {
+      const match = trimmed.match(/\[([^,]+),\s*([^\]]+)\]:\s*(.+)/);
+      if (match) {
+        const x = parseFloat(match[1].trim());
+        const y = parseFloat(match[2].trim());
+        const z = parseFloat(match[3].trim());
+        if (!isNaN(x) && !isNaN(y) && !isNaN(z)) {
+          lookup2dPoints.push({ x, y, z });
+        }
+      }
+    }
+
     // Property assignment
     else if (trimmed.includes(':') && currentBlock) {
       const colonIndex = trimmed.indexOf(':');
@@ -191,12 +238,23 @@ export function parseDSL(code: string): SystemModel {
           rate = (m: SystemModel) => {
             // Simple expression parser
             let expr = rateExpr;
+            
             // Replace global variables ($var)
             expr = m.replaceGlobalVariables(expr);
+            
             // Replace stock names
             m.stocks.forEach((stock, name) => {
               expr = expr.replace(new RegExp('\\b' + name + '\\b', 'g'), stock.value.toString());
             });
+            
+            // IMPORTANT: Replace LOOKUP functions BEFORE delay functions
+            // This ensures LOOKUP calls nested inside delay functions are properly converted
+            // Pattern: LOOKUP(input, TableName) -> m.LOOKUP(input, "TableName")
+            expr = expr.replace(/LOOKUP\s*\(([^,]+),\s*([a-zA-Z_]\w*)\s*\)/g, 'm.LOOKUP($1, "$2")');
+            
+            // Replace LOOKUP2D function calls and quote table names
+            // Pattern: LOOKUP2D(inputX, inputY, TableName) -> m.LOOKUP2D(inputX, inputY, "TableName")
+            expr = expr.replace(/LOOKUP2D\s*\(([^,]+),\s*([^,]+),\s*([a-zA-Z_]\w*)\s*\)/g, 'm.LOOKUP2D($1, $2, "$3")');
             
             // Replace delay function calls with method calls that include buffer IDs
             let delayCounter = 0;
@@ -306,6 +364,14 @@ export function parseDSL(code: string): SystemModel {
         }
 
         model.addGraph(graphConfigObj);
+      } else if (currentBlock === 'lookup' && currentName) {
+        // Add 1D lookup table
+        model.addLookupTable(currentName, lookupPoints);
+        lookupPoints = [];
+      } else if (currentBlock === 'lookup2d' && currentName) {
+        // Add 2D lookup table
+        model.addLookupTable2D(currentName, lookup2dPoints);
+        lookup2dPoints = [];
       }
 
       currentBlock = null;

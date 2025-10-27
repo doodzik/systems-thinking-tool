@@ -27,12 +27,21 @@ function App() {
   const defaultDslCode = `// Population Growth with Resource Constraints
 // Model-level constants
 const BirthRate = 0.02
-const DeathRate = 0.01
-const DeathRateStressed = 0.25
+const BaseDeathRate = 0.01
 const ConsumptionRate = 0.1
-const ResourceThreshold = 50
-const MortalityDelay = 10
+const MortalityDelay = 5
 const MaxSteps = 100
+
+// Lookup table: Resource stress based on resources per capita
+// Input: resources per person, Output: additional death rate from stress
+lookup ResourceStressEffect {
+  [2.0, 0.00]    // 2+ resources/person = no stress
+  [1.5, 0.05]    // 1.5 resources/person = minimal stress
+  [1.0, 0.10]    // 1.0 resources/person = moderate stress
+  [0.5, 0.40]    // 0.5 resources/person = high stress
+  [0.2, 0.80]    // 0.2 resources/person = severe stress
+  [0.0, 0.95]    // 0 resources/person = critical
+}
 
 stock Population {
   initial: 100
@@ -41,7 +50,7 @@ stock Population {
 }
 
 stock Resources {
-  initial: 100
+  initial: 200
   min: 0
   units: "units"
 }
@@ -52,12 +61,12 @@ flow Births {
   rate: Population * BirthRate
 }
 
-// Deaths with DELAY_GRADUAL - resource stress affects mortality gradually
-// Takes ~10 time periods for resource scarcity to fully impact death rate
+// Deaths based on resources per capita with lookup table
+// Base death rate + stress from resource scarcity (with gradual delay)
 flow Deaths {
   from: Population
   to: sink
-  rate: Population * DELAY_GRADUAL(Resources < ResourceThreshold ? DeathRateStressed : DeathRate, MortalityDelay)
+  rate: Population * (BaseDeathRate + DELAY_GRADUAL(LOOKUP(Resources / Population, ResourceStressEffect), MortalityDelay))
   units: "people/year"
 }
 
