@@ -65,6 +65,13 @@ Following the proper architecture guidelines, this implementation now features:
    ```
    Open http://localhost:5173 in your browser.
 
+## Documentation
+
+- **[Getting Started](docs/getting-started-guide.md)** - Learn systems thinking and the tool
+- **[DSL Reference](docs/dsl-reference-guide.md)** - Complete syntax reference
+- **[AI Skill Guide](docs/ai-development-guide.md)** - Use AI to help build models
+- **[Claude Skill File](SKILL.md)** - Load into Claude for AI assistance
+
 ## How to Use
 
 1. **Edit the DSL:** Use the Monaco editor on the left to modify your system dynamics model

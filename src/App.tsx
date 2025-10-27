@@ -127,7 +127,28 @@ graph Resources_Only {
     <div className="app">
       <header className="app-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h1>Systems Thinking Tool</h1>
-        <EmbedGenerator dslCode={dslCode} />
+        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+          <a
+            href="https://github.com/doodzik/systems-thinking-tool/tree/main/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              padding: '8px 16px',
+              background: '#3b82f6',
+              color: 'white',
+              textDecoration: 'none',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '500',
+              transition: 'background 0.2s',
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.background = '#2563eb'}
+            onMouseLeave={(e) => e.currentTarget.style.background = '#3b82f6'}
+          >
+            📚 Docs
+          </a>
+          <EmbedGenerator dslCode={dslCode} />
+        </div>
       </header>
 
       {/* Main content area with collapsible layout */}

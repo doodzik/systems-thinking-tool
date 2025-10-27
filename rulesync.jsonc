@@ -1,0 +1,21 @@
+{
+  "targets": [
+    "claudecode",
+    "cline"
+  ],
+  "features": [
+    "rules",
+    "ignore",
+    "mcp",
+    "commands",
+    "subagents"
+  ],
+  "baseDirs": [
+    "."
+  ],
+  "delete": true,
+  "verbose": false,
+  "global": false,
+  "simulatedCommands": false,
+  "simulatedSubagents": false
+}

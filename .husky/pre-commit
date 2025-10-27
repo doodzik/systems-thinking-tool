@@ -1,0 +1,5 @@
+# Run rulesync to sync .rulesync files to IDE configs
+npx rulesync generate
+
+# Stage any changes made by rulesync
+git add -A
